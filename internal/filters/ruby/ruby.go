@@ -14,6 +14,9 @@ import (
 
 func init() {
 	registry.Register(rake{})
+	registry.Register(railsTest{})
+	registry.Register(rails{})
+	registry.Register(rubyInterp{})
 	registry.Register(rspec{})
 	registry.Register(rubocop{})
 }

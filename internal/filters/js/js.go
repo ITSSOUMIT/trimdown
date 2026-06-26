@@ -21,7 +21,9 @@ func init() {
 	registry.Register(jsTest{tool: "vitest"})
 	registry.Register(jsTest{tool: "playwright"})
 	registry.Register(prettier{})
-	for _, t := range []string{"npm", "npx", "pnpm", "next", "prisma", "biome"} {
+	registry.Register(npm{})
+	registry.Register(node{})
+	for _, t := range []string{"npx", "pnpm", "next", "prisma", "biome"} {
 		registry.Register(compactor{tool: t})
 	}
 }

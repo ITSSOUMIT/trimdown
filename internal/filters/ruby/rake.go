@@ -17,7 +17,17 @@ var minitestSummaryRE = regexp.MustCompile(`(\d+) (runs?|assertions?|failures?|e
 // minitestFailHdrRE matches "  1) Failure:" / "  2) Error:".
 var minitestFailHdrRE = regexp.MustCompile(`^\s*\d+\) (Failure|Error):`)
 
+// rakeTaskRE matches a `rake -T` listing row: "rake db:migrate  # Migrate...".
+var rakeTaskRE = regexp.MustCompile(`^rake\s+(\S+)\s*#\s*(.*)$`)
+
 const maxRakeFailures = 10
+
+// dbTaskPrefixes are rake/rails db:* tasks routed through the migration parser.
+var dbTaskPrefixes = []string{
+	"db:migrate", "db:rollback", "db:seed", "db:create", "db:drop",
+	"db:setup", "db:prepare", "db:reset", "db:schema:load", "db:schema:dump",
+	"db:version",
+}
 
 type rake struct{}
 
@@ -33,7 +43,81 @@ func (rake) Exec(o registry.Opts) engine.CaptureResult {
 	return engine.Capture(rubyExec(tool, args))
 }
 
-func (rake) Parse(c engine.CaptureResult, _ registry.Opts) (ir.Report, error) {
+func (rake) Parse(c engine.CaptureResult, o registry.Opts) (ir.Report, error) {
+	out := engine.StripANSI(c.Stdout + "\n" + c.Stderr)
+	raw := rawOf(c)
+	sub := firstNonFlag(o.Args)
+
+	switch {
+	case hasAny(o.Args, "-T", "--tasks", "-AT", "-A"):
+		return parseRakeTasks(out, c.ExitCode, raw), nil
+	case sub == "test" || sub == "":
+		// Default task and `rake test` → minitest.
+		return parseMinitest(out, c.ExitCode, raw), nil
+	case isDBTask(sub):
+		return parseMigration(out, sub, "rake", c.ExitCode, raw), nil
+	case sub == "assets:precompile":
+		return parseAssetsPrecompile(out, "rake", c.ExitCode, raw), nil
+	case sub == "routes":
+		return parseRoutes(out, "rake", c.ExitCode, raw), nil
+	default:
+		return ir.RawReport("rake", raw, c.ExitCode), nil
+	}
+}
+
+func isDBTask(sub string) bool {
+	for _, p := range dbTaskPrefixes {
+		if sub == p {
+			return true
+		}
+	}
+	return false
+}
+
+// parseRakeTasks compacts `rake -T` task listings into task→description items.
+func parseRakeTasks(out string, exitCode int, raw string) ir.Report {
+	var items []ir.Item
+	total := 0
+	for _, l := range splitLines(out) {
+		m := rakeTaskRE.FindStringSubmatch(strings.TrimRight(l, " "))
+		if m == nil {
+			continue
+		}
+		total++
+		if len(items) >= maxTasks {
+			continue
+		}
+		items = append(items, ir.Item{Key: m[1], Val: strings.TrimSpace(m[2])})
+	}
+	if total == 0 {
+		return ir.RawReport("rake", raw, exitCode)
+	}
+	if total > len(items) {
+		items = append(items, ir.Item{Key: fmt.Sprintf("+%d more", total-len(items))})
+	}
+	noun := "task"
+	if total != 1 {
+		noun = "tasks"
+	}
+	return ir.Report{
+		Tool: "rake", Summary: fmt.Sprintf("%d %s", total, noun), Status: ir.StatusOK,
+		Items: items, Filtered: true, Raw: raw, ExitCode: exitCode,
+	}
+}
+
+// railsTest handles `rails test` directly (the way Rails devs invoke it),
+// reusing the minitest parser. Other `rails` subcommands (server, db:migrate,
+// console, …) aren't registered, so they pass through unfiltered.
+type railsTest struct{}
+
+func (railsTest) Tool() string       { return "rails" }
+func (railsTest) Subcommand() string { return "test" }
+
+func (railsTest) Exec(o registry.Opts) engine.CaptureResult {
+	return engine.Capture(rubyExec("rails", o.Args))
+}
+
+func (railsTest) Parse(c engine.CaptureResult, _ registry.Opts) (ir.Report, error) {
 	return parseMinitest(engine.StripANSI(c.Stdout+"\n"+c.Stderr), c.ExitCode, rawOf(c)), nil
 }
 

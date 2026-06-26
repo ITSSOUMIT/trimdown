@@ -80,6 +80,20 @@ Expected: "a"
 	}
 }
 
+func TestRailsTestRegisteredAndParses(t *testing.T) {
+	// `rails test` must be its own entry point (not only `rake`), routing to
+	// the minitest parser. Guards against the gap we shipped in v0.1.0.
+	f := railsTest{}
+	if f.Tool() != "rails" || f.Subcommand() != "test" {
+		t.Fatalf("tool=%q sub=%q, want rails/test", f.Tool(), f.Subcommand())
+	}
+	out := "Finished in 0.1s\n5 runs, 7 assertions, 0 failures, 0 errors, 0 skips"
+	rep, _ := f.Parse(engine.CaptureResult{Stdout: out, ExitCode: 0}, registry.Opts{Args: []string{"test"}})
+	if !rep.Filtered || rep.Summary != "5 runs, 0 failures" {
+		t.Fatalf("rails test not parsed: %+v", rep)
+	}
+}
+
 func TestParseMinitestAllPass(t *testing.T) {
 	out := "Finished in 0.1s\n8 runs, 12 assertions, 0 failures, 0 errors, 0 skips"
 	rep := parseMinitest(out, 0, out)
