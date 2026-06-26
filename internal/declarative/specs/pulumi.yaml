@@ -1,0 +1,29 @@
+tool: pulumi
+description: Strip per-resource progress/unchanged noise from pulumi; keep the change summary, diagnostics and errors.
+strip_ansi: true
+strip_lines:
+  - '^\s*$'
+  - '^@ .*(Updating|Previewing|Refreshing)\.\.\.'
+  - '^\s+(unchanged|reading\.\.\.)\s*$'
+  - '\bunchanged\]?$'
+  - '^\s*pulumi:pulumi:Stack\b.*\bunchanged'
+keep_lines: []
+max_lines: 80
+tests:
+  - name: keeps the resource change summary
+    input: |
+      Previewing update (dev):
+
+           Type                 Name        Plan
+       +   pulumi:pulumi:Stack  app-dev     create
+       +   aws:s3:Bucket        data        create
+
+      Resources:
+          + 2 to create
+    expected: |
+      Previewing update (dev):
+           Type                 Name        Plan
+       +   pulumi:pulumi:Stack  app-dev     create
+       +   aws:s3:Bucket        data        create
+      Resources:
+          + 2 to create

@@ -1,0 +1,8 @@
+tool: nx
+description: Strip the nx task-graph banner and cache notes.
+strip_ansi: true
+strip_lines:
+  - '^> nx run '
+  - 'read the output from the cache'
+  - '^\s*$'
+max_lines: 80

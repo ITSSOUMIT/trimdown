@@ -1,0 +1,7 @@
+tool: stat
+description: Strip Device/Inode/Birth detail lines from stat.
+strip_lines:
+  - '^\s*Device: '
+  - '^\s*Inode: '
+  - ' Birth: '
+  - '^\s*$'

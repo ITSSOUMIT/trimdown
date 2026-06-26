@@ -1,0 +1,6 @@
+tool: helm
+description: Strip blank lines and glog warnings from helm output.
+strip_lines:
+  - '^W\d{4} .*\] '
+  - '^\s*$'
+max_lines: 120

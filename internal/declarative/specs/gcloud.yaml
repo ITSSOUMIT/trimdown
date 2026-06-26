@@ -1,0 +1,6 @@
+tool: gcloud
+description: Strip blank lines and truncate wide gcloud table rows.
+strip_lines:
+  - '^\s*$'
+truncate_at: 160
+max_lines: 60

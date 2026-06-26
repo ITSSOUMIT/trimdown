@@ -1,0 +1,5 @@
+tool: just
+description: Strip the echoed recipe-command lines (===> ...) from just.
+strip_lines:
+  - '^===> '
+truncate_at: 200

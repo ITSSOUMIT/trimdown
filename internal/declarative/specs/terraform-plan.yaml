@@ -1,0 +1,32 @@
+tool: terraform
+subcommand: plan
+description: Strip refreshing/lock noise from terraform plan; keep the change summary.
+strip_ansi: true
+strip_lines:
+  - 'Refreshing state\.\.\.'
+  - ': Reading\.\.\.'
+  - ': Read complete after'
+  - '^\s*$'
+match_output:
+  - pattern: 'No changes\. Your infrastructure matches the configuration'
+    message: "terraform plan: no changes"
+    unless: 'Error:'
+max_lines: 80
+tests:
+  - name: no-changes short-circuit
+    input: |
+      aws_instance.web: Refreshing state... [id=i-123]
+      No changes. Your infrastructure matches the configuration.
+    expected: "terraform plan: no changes"
+  - name: keeps the change plan
+    input: |
+      aws_instance.web: Refreshing state... [id=i-123]
+
+      Terraform will perform the following actions:
+
+        # aws_instance.web will be updated in-place
+      Plan: 0 to add, 1 to change, 0 to destroy.
+    expected: |
+      Terraform will perform the following actions:
+        # aws_instance.web will be updated in-place
+      Plan: 0 to add, 1 to change, 0 to destroy.

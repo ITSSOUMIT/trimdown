@@ -1,0 +1,4 @@
+tool: df
+description: Truncate wide df rows and cap the number of mounts shown.
+truncate_at: 120
+max_lines: 25

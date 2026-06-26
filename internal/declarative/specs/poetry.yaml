@@ -1,0 +1,10 @@
+tool: poetry
+description: Strip download/install progress from poetry; short-circuit on no changes.
+strip_ansi: true
+strip_lines:
+  - '^\s*•\s'
+  - '^\s*$'
+match_output:
+  - pattern: 'No dependencies to install or update'
+    message: "poetry: up to date"
+    unless: 'error'

@@ -1,0 +1,10 @@
+tool: liquibase
+description: Strip Liquibase banner, version, and INFO logs (emitted on stderr).
+filter_stderr: true
+strip_lines:
+  - '^####+'
+  - '^## *Liquibase'
+  - '^Starting Liquibase'
+  - ' INFO '
+  - '^\s*$'
+max_lines: 60

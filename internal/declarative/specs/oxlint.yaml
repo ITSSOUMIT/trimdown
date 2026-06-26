@@ -1,0 +1,7 @@
+tool: oxlint
+description: Strip blank lines and the Finished/Found summary chatter from oxlint.
+strip_ansi: true
+strip_lines:
+  - '^Finished in '
+  - '^\s*$'
+on_empty: "oxlint: ok"

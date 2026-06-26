@@ -1,0 +1,14 @@
+tool: ssh
+description: Strip ssh debug/banner noise, keep the remote command output.
+strip_lines:
+  - '^debug\d+:'
+  - '^Warning: Permanently added'
+  - '^Pseudo-terminal will not be allocated'
+tests:
+  - name: strips debug and warning lines
+    input: |
+      debug1: Reading configuration data /etc/ssh/ssh_config
+      Warning: Permanently added 'host' (ED25519) to the list of known hosts.
+      hello from remote
+    expected: |
+      hello from remote

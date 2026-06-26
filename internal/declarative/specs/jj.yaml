@@ -1,0 +1,8 @@
+tool: jj
+description: Strip hint/working-copy chatter from Jujutsu (jj).
+strip_lines:
+  - '^Hint: '
+  - '^Working copy now at:'
+  - '^Parent commit '
+  - '^\s*$'
+truncate_at: 200

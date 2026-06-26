@@ -1,0 +1,5 @@
+tool: yamllint
+description: Strip blank lines from yamllint output.
+strip_lines:
+  - '^\s*$'
+on_empty: "yamllint: ok"

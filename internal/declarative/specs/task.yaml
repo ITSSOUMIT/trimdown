@@ -1,0 +1,6 @@
+tool: task
+description: Strip up-to-date and recipe header lines from go-task.
+strip_lines:
+  - 'is up to date'
+  - '^task: \[.*\] '
+  - '^\s*$'

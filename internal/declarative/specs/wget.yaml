@@ -1,0 +1,20 @@
+tool: wget
+description: Strip progress bars and verbose connection chatter from wget.
+filter_stderr: true
+strip_lines:
+  - '^\s*\d+K '
+  - '^\s+\d+%\['
+  - '^Connecting to '
+  - '^Resolving '
+  - '^\s*$'
+match_output:
+  - pattern: "saved \\["
+    message: "wget: saved"
+    unless: 'ERROR|failed'
+tests:
+  - name: saved short-circuit
+    input: |
+      Resolving example.com... 93.184.216.34
+      Connecting to example.com|93.184.216.34|:443... connected.
+      2024-01-01 file.tar.gz saved [10240/10240]
+    expected: "wget: saved"

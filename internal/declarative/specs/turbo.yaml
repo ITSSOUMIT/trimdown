@@ -1,0 +1,8 @@
+tool: turbo
+description: Strip cache-status and per-task header noise from Turborepo.
+strip_ansi: true
+strip_lines:
+  - 'cache hit, replaying'
+  - 'cache miss, executing'
+  - '^\s*$'
+max_lines: 80

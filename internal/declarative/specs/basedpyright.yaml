@@ -1,0 +1,12 @@
+tool: basedpyright
+description: Strip search/found/version noise from basedpyright; keep errors.
+strip_lines:
+  - '^No configuration file found'
+  - '^Assuming Python '
+  - '^Searching for source files'
+  - '^Found \d+ source file'
+  - '^\s*$'
+match_output:
+  - pattern: '0 errors, 0 warnings, 0 (notes|informations)'
+    message: "basedpyright: ok"
+    unless: ' error'

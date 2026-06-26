@@ -1,0 +1,7 @@
+tool: jira
+description: Strip blank lines and box-drawing separators from the jira CLI.
+strip_lines:
+  - '^[─━┄┈╌|+-]+$'
+  - '^\s*$'
+truncate_at: 160
+max_lines: 60

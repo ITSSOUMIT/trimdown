@@ -1,0 +1,22 @@
+tool: tofu
+subcommand: init
+description: Strip provider download/installation chatter from OpenTofu init.
+strip_ansi: true
+strip_lines:
+  - '- Installing '
+  - '- Finding '
+  - '- Downloading '
+  - 'Reusing previous version'
+  - '^\s*$'
+match_output:
+  - pattern: 'OpenTofu has been successfully initialized'
+    message: "tofu init: ok"
+    unless: 'Error:'
+tests:
+  - name: success short-circuit
+    input: |
+      Initializing the backend...
+      - Finding hashicorp/aws versions...
+      - Installing hashicorp/aws v5.0.0...
+      OpenTofu has been successfully initialized!
+    expected: "tofu init: ok"

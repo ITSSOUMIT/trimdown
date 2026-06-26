@@ -1,0 +1,15 @@
+tool: pre-commit
+description: Strip pre-commit env-install/info chatter; keep hook results.
+strip_lines:
+  - '^\[INFO\]'
+  - '^\s*$'
+tests:
+  - name: drops INFO env lines
+    input: |
+      [INFO] Initializing environment for https://github.com/psf/black.
+      [INFO] Installing environment for https://github.com/psf/black.
+      black....................................................................Passed
+      trim whitespace..........................................................Passed
+    expected: |
+      black....................................................................Passed
+      trim whitespace..........................................................Passed

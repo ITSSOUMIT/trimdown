@@ -1,0 +1,5 @@
+tool: hadolint
+description: Strip blank lines from hadolint Dockerfile findings.
+strip_lines:
+  - '^\s*$'
+on_empty: "hadolint: ok"

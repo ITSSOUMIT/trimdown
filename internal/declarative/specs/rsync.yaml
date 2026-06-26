@@ -1,0 +1,20 @@
+tool: rsync
+description: Strip per-file transfer lines from rsync; keep the totals.
+strip_lines:
+  - '^sending incremental file list'
+  - '^\s*$'
+match_output:
+  - pattern: 'total size is .* speedup is'
+    message: "rsync: complete"
+    unless: 'rsync error|failed'
+tests:
+  - name: complete short-circuit
+    input: |
+      sending incremental file list
+      ./
+      file1.txt
+      file2.txt
+
+      sent 1,234 bytes  received 56 bytes  2,580.00 bytes/sec
+      total size is 9,999  speedup is 7.75
+    expected: "rsync: complete"

@@ -1,0 +1,5 @@
+tool: fail2ban-client
+description: Strip blank lines from fail2ban-client output.
+strip_lines:
+  - '^\s*$'
+truncate_at: 160

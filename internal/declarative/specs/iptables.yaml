@@ -1,0 +1,7 @@
+tool: iptables
+description: Strip Docker/bridge auto-generated chains; keep user rules.
+strip_lines:
+  - '^Chain DOCKER'
+  - '^Chain (BR-|br-)'
+  - '^\s*$'
+truncate_at: 160

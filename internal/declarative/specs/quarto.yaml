@@ -1,0 +1,18 @@
+tool: quarto
+subcommand: render
+description: Strip processing/validating/rendering chatter; short-circuit on output created.
+strip_ansi: true
+strip_lines:
+  - '^\s*(processing|validating|rendering) '
+  - '^\s*$'
+match_output:
+  - pattern: 'Output created:'
+    message: "quarto render: ok"
+    unless: 'ERROR|Error'
+tests:
+  - name: output-created short-circuit
+    input: |
+      processing file: report.qmd
+      rendering report.qmd to html
+      Output created: report.html
+    expected: "quarto render: ok"

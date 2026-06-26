@@ -1,0 +1,6 @@
+tool: jq
+description: Truncate very wide jq output lines and cap the line count.
+strip_lines:
+  - '^\s*$'
+truncate_at: 200
+max_lines: 120

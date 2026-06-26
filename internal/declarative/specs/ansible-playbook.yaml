@@ -1,0 +1,22 @@
+tool: ansible-playbook
+description: Keep changed/failed tasks and the recap; drop ok/skipping noise.
+strip_ansi: true
+strip_lines:
+  - '^ok: '
+  - '^skipping: '
+  - '^\s*$'
+tests:
+  - name: keeps changed and failed, drops ok/skipping
+    input: |
+      TASK [install nginx] ***
+      ok: [web1]
+      changed: [web2]
+
+      TASK [start service] ***
+      skipping: [web1]
+      failed: [web2]
+    expected: |
+      TASK [install nginx] ***
+      changed: [web2]
+      TASK [start service] ***
+      failed: [web2]

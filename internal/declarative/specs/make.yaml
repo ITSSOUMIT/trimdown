@@ -1,0 +1,24 @@
+tool: make
+description: Compact make output — drop recursive-make noise and blank lines.
+strip_lines:
+  - '^make\[\d+\]: (Entering|Leaving) directory'
+  - '^make\[\d+\]: Nothing to be done'
+  - '^\s*$'
+max_lines: 60
+on_empty: "make: ok"
+tests:
+  - name: strips entering/leaving and blanks
+    input: |
+      make[1]: Entering directory '/home/user'
+      gcc -O2 -c foo.c
+      gcc -O2 -c bar.c
+      make[1]: Leaving directory '/home/user'
+    expected: |
+      gcc -O2 -c foo.c
+      gcc -O2 -c bar.c
+  - name: on_empty when everything is stripped
+    input: |
+      make[1]: Entering directory '/x'
+      make[1]: Nothing to be done for 'all'.
+      make[1]: Leaving directory '/x'
+    expected: "make: ok"

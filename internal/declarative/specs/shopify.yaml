@@ -1,0 +1,8 @@
+tool: shopify
+subcommand: theme
+description: Strip per-file upload/download lines from shopify theme push/pull; keep the tail.
+strip_ansi: true
+strip_lines:
+  - '^\s*(Uploading|Downloading|Updated|Synced) '
+  - '^\s*$'
+tail: 6

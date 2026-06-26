@@ -1,0 +1,6 @@
+tool: du
+description: Strip blank lines and truncate wide du output.
+strip_lines:
+  - '^\s*$'
+truncate_at: 120
+max_lines: 40

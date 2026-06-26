@@ -1,0 +1,4 @@
+tool: ps
+description: Truncate wide ps rows and cap the process count.
+truncate_at: 120
+max_lines: 40

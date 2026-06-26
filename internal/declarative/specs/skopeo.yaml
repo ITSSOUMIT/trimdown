@@ -1,0 +1,18 @@
+tool: skopeo
+description: Strip blob/manifest copy progress from skopeo.
+strip_lines:
+  - '^Copying blob '
+  - '^Copying config '
+  - '^Writing manifest '
+  - '^Storing signatures'
+  - '^\s*$'
+on_empty: "skopeo: copy complete"
+tests:
+  - name: collapses copy progress
+    input: |
+      Copying blob sha256:abc123
+      Copying blob sha256:def456
+      Copying config sha256:111
+      Writing manifest to image destination
+      Storing signatures
+    expected: "skopeo: copy complete"

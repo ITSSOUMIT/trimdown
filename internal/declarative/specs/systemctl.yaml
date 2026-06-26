@@ -1,0 +1,6 @@
+tool: systemctl
+subcommand: status
+description: Strip blank lines and cap systemctl status output.
+strip_lines:
+  - '^\s*$'
+max_lines: 20

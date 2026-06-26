@@ -1,0 +1,17 @@
+tool: uv
+description: Strip download/cached/preparing chatter from uv; short-circuit on audited.
+strip_ansi: true
+strip_lines:
+  - '^\s*(Downloading|Preparing|Building) '
+  - '\bcached\b'
+  - '^\s*$'
+match_output:
+  - pattern: 'Audited \d+ packages?'
+    message: "uv: up to date"
+    unless: 'error'
+tests:
+  - name: audited short-circuit
+    input: |
+      Resolved 14 packages in 12ms
+      Audited 14 packages in 0.5ms
+    expected: "uv: up to date"

@@ -1,0 +1,15 @@
+# Binaries
+/trimdown
+/dist/
+*.exe
+
+# Test / coverage
+*.out
+coverage.*
+
+# OS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/

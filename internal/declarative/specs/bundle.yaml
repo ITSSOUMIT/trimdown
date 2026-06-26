@@ -1,0 +1,26 @@
+tool: bundle
+description: Strip "Using <gem>" lines from bundle install/update; short-circuit on success.
+strip_lines:
+  - '^Using '
+  - '^Fetching gem metadata'
+  - '^Resolving dependencies'
+  - '^\s*$'
+match_output:
+  - pattern: 'Bundle complete!'
+    message: "bundle: complete"
+    unless: '(error|conflict|Could not)'
+tests:
+  - name: complete short-circuit
+    input: |
+      Using rake 13.0.6
+      Using minitest 5.18.0
+      Bundle complete! 12 Gemfile dependencies, 54 gems now installed.
+    expected: "bundle: complete"
+  - name: keeps newly installed gems
+    input: |
+      Using rake 13.0.6
+      Installing nokogiri 1.15.0 with native extensions
+      Bundle updated!
+    expected: |
+      Installing nokogiri 1.15.0 with native extensions
+      Bundle updated!

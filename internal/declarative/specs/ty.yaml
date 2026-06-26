@@ -1,0 +1,10 @@
+tool: ty
+description: Strip blank/checking noise from the ty type checker; keep diagnostics.
+strip_ansi: true
+strip_lines:
+  - '^\s*Checking\b'
+  - '^\s*$'
+match_output:
+  - pattern: 'All checks passed'
+    message: "ty: ok"
+    unless: 'error'

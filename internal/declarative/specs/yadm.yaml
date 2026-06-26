@@ -1,0 +1,6 @@
+tool: yadm
+description: Strip blank lines and git hint blocks from yadm (a git wrapper).
+strip_lines:
+  - '^hint: '
+  - '^\s*$'
+truncate_at: 200

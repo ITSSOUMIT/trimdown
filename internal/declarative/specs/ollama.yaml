@@ -1,0 +1,6 @@
+tool: ollama
+subcommand: run
+description: Strip spinner/progress ANSI and blank lines; keep the model response.
+strip_ansi: true
+strip_lines:
+  - '^\s*$'

@@ -1,0 +1,5 @@
+tool: markdownlint
+description: Strip blank lines from markdownlint output.
+strip_lines:
+  - '^\s*$'
+on_empty: "markdownlint: ok"

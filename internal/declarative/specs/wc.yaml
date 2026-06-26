@@ -1,0 +1,13 @@
+tool: wc
+description: Collapse internal padding/whitespace in wc output.
+replace:
+  - pattern: '^\s+'
+    replacement: ''
+  - pattern: '\s+'
+    replacement: ' '
+tests:
+  - name: collapses padding
+    input: |
+            42     310    2048 main.go
+    expected: |
+      42 310 2048 main.go

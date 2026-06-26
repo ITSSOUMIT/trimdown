@@ -1,0 +1,6 @@
+tool: mise
+description: Strip install/download/extract progress from mise.
+strip_lines:
+  - 'mise .* install'
+  - '^\s*(downloading|extracting|installing)\b'
+  - '^\s*$'

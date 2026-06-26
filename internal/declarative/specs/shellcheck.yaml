@@ -1,0 +1,10 @@
+tool: shellcheck
+description: Strip blank lines from shellcheck; keep findings and caret indicators.
+strip_lines:
+  - '^\s*$'
+on_empty: "shellcheck: ok"
+tests:
+  - name: ok when no findings
+    input: |
+
+    expected: "shellcheck: ok"

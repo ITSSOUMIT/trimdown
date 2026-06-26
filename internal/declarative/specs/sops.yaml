@@ -1,0 +1,5 @@
+tool: sops
+description: Strip blank lines from sops output.
+strip_lines:
+  - '^\s*$'
+truncate_at: 200
