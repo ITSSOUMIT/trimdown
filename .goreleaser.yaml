@@ -35,6 +35,9 @@ homebrew_casks:
   - repository:
       owner: itssoumit
       name: homebrew-tap
+      # Use the cross-repo PAT, not the default GITHUB_TOKEN (which can't write
+      # to another repo → "403 Resource not accessible by integration").
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/itssoumit/trimdown
     description: CLI proxy that compresses tool output to cut LLM token use.
     # Remove the quarantine xattr so the unsigned binary runs without prompts.
