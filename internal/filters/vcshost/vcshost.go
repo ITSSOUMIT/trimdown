@@ -57,6 +57,7 @@ func (c compactor) Parse(cr engine.CaptureResult, _ registry.Opts) (ir.Report, e
 		Tool:     c.tool,
 		Status:   ir.StatusOK,
 		Text:     strings.Join(kept, "\n"),
+		Notes:    notes,
 		Filtered: true,
 		Raw:      rawOf(cr),
 	}, nil

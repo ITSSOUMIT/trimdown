@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/itssoumit/trimdown/internal/ir"
@@ -166,16 +167,13 @@ func parseShortstat(s string) (files, ins, del int) {
 		}
 		for _, part := range strings.Split(l, ",") {
 			part = strings.TrimSpace(part)
-			var n int
 			switch {
 			case strings.Contains(part, "file"):
-				fmt.Sscanf(part, "%d", &files)
+				files = leadingInt(part)
 			case strings.Contains(part, "insertion"):
-				fmt.Sscanf(part, "%d", &n)
-				ins = n
+				ins = leadingInt(part)
 			case strings.Contains(part, "deletion"):
-				fmt.Sscanf(part, "%d", &n)
-				del = n
+				del = leadingInt(part)
 			}
 		}
 		if files > 0 {
@@ -183,6 +181,17 @@ func parseShortstat(s string) (files, ins, del int) {
 		}
 	}
 	return
+}
+
+// leadingInt parses the first whitespace-separated token of s as an int,
+// e.g. "3 files changed" → 3. Returns 0 if not a number.
+func leadingInt(s string) int {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return 0
+	}
+	n, _ := strconv.Atoi(fields[0])
+	return n
 }
 
 func capList(items []string, n int) []string {

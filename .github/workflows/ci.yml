@@ -32,6 +32,8 @@ jobs:
         with:
           go-version: '1.26'
           cache: true
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          # Pinned so a new golangci-lint release can't fail CI with new rules.
+          # action v8 supports golangci-lint v2.x.
+          version: v2.12.2

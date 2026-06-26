@@ -84,7 +84,7 @@ func (e *EventLog) Record(ev Event) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	b, err := json.Marshal(ev)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (e *EventLog) Read() ([]Event, error) {
 		}
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var out []Event
 	sc := bufio.NewScanner(f)

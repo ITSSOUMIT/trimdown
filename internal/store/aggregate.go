@@ -13,8 +13,6 @@ type ToolStat struct {
 	Count    int     `json:"count"`
 	Saved    int     `json:"saved"`
 	AvgPct   float64 `json:"avg_pct"`
-	totalIn  int
-	totalOut int
 	totalPct float64
 }
 
