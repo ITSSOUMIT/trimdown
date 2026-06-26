@@ -29,8 +29,6 @@ var (
 	npmAddedRE   = regexp.MustCompile(`added (\d+) packages?`)
 	npmRemovedRE = regexp.MustCompile(`removed (\d+) packages?`)
 	npmChangedRE = regexp.MustCompile(`changed (\d+) packages?`)
-	npmAuditedRE = regexp.MustCompile(`audited (\d+) packages?`)
-	npmTimeRE    = regexp.MustCompile(`in ([\d.]+m?s)`)
 
 	// "5 vulnerabilities (2 low, 1 moderate, 1 high, 1 critical)" or "found 0 vulnerabilities"
 	npmVulnTotalRE = regexp.MustCompile(`(\d+) vulnerabilit(?:y|ies)`)
@@ -351,9 +349,7 @@ func npmLsReport(out, raw string, exit int) ir.Report {
 	}
 
 	var notes []string
-	for _, w := range warnings {
-		notes = append(notes, w)
-	}
+	notes = append(notes, warnings...)
 	if overflow > 0 {
 		notes = append(notes, "+"+strconv.Itoa(overflow)+" more")
 	}
