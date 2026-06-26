@@ -18,9 +18,9 @@ func init() {
 	registry.Register(aws{})
 	registry.Register(psql{})
 	registry.Register(curl{})
-	for _, t := range []string{"docker", "kubectl", "oc"} {
-		registry.Register(orchestrator{tool: t})
-	}
+	registry.Register(docker{})
+	registry.Register(kube{tool: "kubectl"})
+	registry.Register(kube{tool: "oc"})
 }
 
 const maxCloudLines = 80
@@ -81,42 +81,20 @@ func dedupLines(lines []string) []string {
 	return out
 }
 
-// orchestrator compacts docker/kubectl/oc output: dedup for logs, strip+cap
-// for everything else.
-type orchestrator struct{ tool string }
-
-func (o orchestrator) Tool() string     { return o.tool }
-func (orchestrator) Subcommand() string { return "" }
-
-func (o orchestrator) Exec(opts registry.Opts) engine.CaptureResult {
-	return engine.Capture(engine.ResolvedCommand(o.tool, opts.Args...))
-}
-
-func (o orchestrator) Parse(c engine.CaptureResult, opts registry.Opts) (ir.Report, error) {
-	if c.ExitCode != 0 {
-		return ir.Report{Filtered: false, Raw: rawOf(c), ExitCode: c.ExitCode}, nil
+// genericJSONCompact structurally compacts arbitrary JSON output: it parses the
+// JSON and re-emits it minified (whitespace dropped), truncating very large
+// payloads. Used as the fallback when a tool's JSON isn't the specific shape a
+// dedicated parser expected — still structural, never a blind line strip. When
+// the body isn't JSON at all, it falls back to stripping blanks and capping.
+func genericJSONCompact(tool string, c engine.CaptureResult) (ir.Report, error) {
+	body := strings.TrimSpace(c.Stdout)
+	var v any
+	if body == "" || json.Unmarshal([]byte(body), &v) != nil {
+		lines, notes := capLines(splitLines(engine.StripANSI(c.Stdout)), maxCloudLines)
+		return ir.Report{Tool: tool, Status: ir.StatusOK, Text: strings.Join(lines, "\n"), Notes: notes, Filtered: true, Raw: rawOf(c)}, nil
 	}
-	lines := splitLines(engine.StripANSI(c.Stdout))
-	if isLogsCommand(opts.Args) {
-		lines = dedupLines(lines)
-	}
-	for i := range lines {
-		lines[i] = truncateRunes(lines[i], 200)
-	}
-	lines, notes := capLines(lines, maxCloudLines)
-	return ir.Report{
-		Tool: o.tool, Status: ir.StatusOK, Text: strings.Join(lines, "\n"),
-		Notes: notes, Filtered: true, Raw: rawOf(c),
-	}, nil
-}
-
-func isLogsCommand(args []string) bool {
-	for _, a := range args {
-		if a == "logs" {
-			return true
-		}
-	}
-	return false
+	b, _ := json.Marshal(v) // minified
+	return ir.Report{Tool: tool, Status: ir.StatusOK, Text: truncateRunes(string(b), 4000), Filtered: true, Raw: rawOf(c)}, nil
 }
 
 // --- aws ---

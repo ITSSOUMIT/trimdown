@@ -1,17 +1,15 @@
 // Package sys holds native filters for language-agnostic system/file tools:
-// read (cat/head/tail), grep, log, env, json, and compaction for ls/tree/find/
-// diff. Note these are lower-priority than git/test/lint tools because an agent
-// like Claude Code often uses its built-in Read/Grep/Glob instead of the shell.
+// read (cat/head/tail), grep, log, env, json, diff, and structured compaction
+// for ls/tree/find. Note these are lower-priority than git/test/lint tools
+// because an agent like Claude Code often uses its built-in Read/Grep/Glob
+// instead of the shell.
 package sys
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/itssoumit/trimdown/internal/engine"
-	"github.com/itssoumit/trimdown/internal/ir"
 	"github.com/itssoumit/trimdown/internal/registry"
 )
 
@@ -21,9 +19,9 @@ func init() {
 	registry.Register(envFilter{})
 	registry.Register(jsonFilter{})
 	registry.Register(grep{})
-	for _, t := range []string{"ls", "tree", "find"} {
-		registry.Register(compactor{tool: t})
-	}
+	registry.Register(lsFilter{})
+	registry.Register(treeFilter{})
+	registry.Register(findFilter{})
 	registry.Register(diffFilter{})
 }
 
@@ -110,27 +108,19 @@ func atoiSafe(s string) int {
 	return n
 }
 
-// compactor exec's a real tool (ls/tree/find) and strips/caps its output.
-type compactor struct{ tool string }
-
-func (c compactor) Tool() string     { return c.tool }
-func (compactor) Subcommand() string { return "" }
-func (c compactor) Exec(o registry.Opts) engine.CaptureResult {
-	return engine.Capture(engine.ResolvedCommand(c.tool, o.Args...))
-}
-func (c compactor) Parse(cr engine.CaptureResult, _ registry.Opts) (ir.Report, error) {
-	if cr.ExitCode != 0 {
-		return ir.Report{Filtered: false, Raw: cr.Stdout + cr.Stderr, ExitCode: cr.ExitCode}, nil
+// compactError recognizes common filesystem failures (No such file, Permission
+// denied) so ls/tree/find can compact a clean error message instead of either
+// dumping the raw stderr verbosely or passing through. Returns ("", false) when
+// the error is not recognizable, signaling the caller to raw-passthrough.
+func compactError(stderr string) (string, bool) {
+	low := strings.ToLower(stderr)
+	switch {
+	case strings.Contains(low, "no such file or directory"):
+		return "no such file or directory", true
+	case strings.Contains(low, "permission denied"):
+		return "permission denied", true
+	case strings.Contains(low, "not a directory"):
+		return "not a directory", true
 	}
-	lines := splitLines(cr.Stdout)
-	const limit = 200
-	var notes []string
-	if len(lines) > limit {
-		notes = append(notes, fmt.Sprintf("… +%d more", len(lines)-limit))
-		lines = lines[:limit]
-	}
-	for i := range lines {
-		lines[i] = truncateRunes(lines[i], 200)
-	}
-	return ir.Report{Tool: c.tool, Status: ir.StatusOK, Text: strings.Join(lines, "\n"), Notes: notes, Filtered: true, Raw: cr.Stdout}, nil
+	return "", false
 }

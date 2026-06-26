@@ -27,9 +27,9 @@ func TestDedupLines(t *testing.T) {
 	}
 }
 
-func TestOrchestratorLogsDedup(t *testing.T) {
+func TestKubeLogsDedup(t *testing.T) {
 	in := "starting\nheartbeat\nheartbeat\nheartbeat\ndone\n"
-	rep, _ := orchestrator{tool: "kubectl"}.Parse(
+	rep, _ := kube{tool: "kubectl"}.Parse(
 		engine.CaptureResult{Stdout: in, ExitCode: 0},
 		registry.Opts{Args: []string{"logs", "mypod"}},
 	)

@@ -50,16 +50,38 @@ func (Filter) Parse(c engine.CaptureResult, o registry.Opts) (ir.Report, error) 
 		// Unsupported subcommand → render raw, preserve exit code.
 		return ir.RawReport("git", rawOf(c), c.ExitCode), nil
 	}
-	if c.ExitCode != 0 {
-		// Failures: show the real error unchanged.
+	if c.ExitCode != 0 && !failureAware[inv.sub] {
+		// Failures we can't structure: show the real error unchanged.
 		return ir.RawReport("git", rawOf(c), c.ExitCode), nil
 	}
 	rep := h(c, inv)
+	if !rep.Filtered && rep.Summary == "" && rep.Text == "" {
+		// Failure-aware handler declined to compact this error (e.g. an
+		// unrecognized failure shape) → fall back to raw passthrough.
+		return ir.RawReport("git", rawOf(c), c.ExitCode), nil
+	}
 	rep.Tool = "git"
 	rep.Subcommand = inv.sub
 	rep.Filtered = true
 	rep.Raw = rawOf(c)
+	rep.ExitCode = c.ExitCode
 	return rep, nil
+}
+
+// failureAware lists subcommands whose handler is invoked even on a non-zero
+// exit, because it can compact a structured failure (e.g. merge/rebase
+// conflicts, checkout local-changes errors). When such a handler cannot
+// recognize the failure it returns a zero Report and Parse falls back to raw.
+var failureAware = map[string]bool{
+	"merge":       true,
+	"rebase":      true,
+	"cherry-pick": true,
+	"revert":      true,
+	"checkout":    true,
+	"switch":      true,
+	"restore":     true,
+	"apply":       true,
+	"am":          true,
 }
 
 // handlers maps a git subcommand to its parser. Each parser is pure (takes
@@ -83,6 +105,36 @@ var handlers = map[string]func(engine.CaptureResult, invocation) ir.Report{
 	"branch":   func(c engine.CaptureResult, _ invocation) ir.Report { return parseBranch(c.Stdout) },
 	"stash":    func(c engine.CaptureResult, inv invocation) ir.Report { return parseStash(c.Stdout, inv) },
 	"worktree": func(c engine.CaptureResult, _ invocation) ir.Report { return parseWorktree(c.Stdout) },
+
+	// --- refs / history-moving subcommands ---
+	"checkout":    func(c engine.CaptureResult, inv invocation) ir.Report { return parseCheckout(c, inv) },
+	"switch":      func(c engine.CaptureResult, inv invocation) ir.Report { return parseCheckout(c, inv) },
+	"restore":     func(c engine.CaptureResult, inv invocation) ir.Report { return parseRestore(c, inv) },
+	"merge":       func(c engine.CaptureResult, _ invocation) ir.Report { return parseMerge(c) },
+	"rebase":      func(c engine.CaptureResult, inv invocation) ir.Report { return parseRebase(c, inv) },
+	"cherry-pick": func(c engine.CaptureResult, _ invocation) ir.Report { return parseCherryPick(c, "cherry-pick") },
+	"revert":      func(c engine.CaptureResult, _ invocation) ir.Report { return parseCherryPick(c, "revert") },
+	"reset":       func(c engine.CaptureResult, _ invocation) ir.Report { return parseReset(c) },
+	"apply":       func(c engine.CaptureResult, _ invocation) ir.Report { return parseApply(c) },
+	"am":          func(c engine.CaptureResult, _ invocation) ir.Report { return parseAm(c) },
+
+	// --- listing / lookup subcommands ---
+	"tag":      func(c engine.CaptureResult, inv invocation) ir.Report { return parseTag(c, inv) },
+	"remote":   func(c engine.CaptureResult, inv invocation) ir.Report { return parseRemote(c, inv) },
+	"clean":    func(c engine.CaptureResult, _ invocation) ir.Report { return parseClean(c) },
+	"config":   func(c engine.CaptureResult, inv invocation) ir.Report { return parseConfig(c, inv) },
+	"reflog":   func(c engine.CaptureResult, _ invocation) ir.Report { return parseReflog(c) },
+	"shortlog": func(c engine.CaptureResult, _ invocation) ir.Report { return parseShortlog(c) },
+	"describe": func(c engine.CaptureResult, _ invocation) ir.Report { return parseOneValue(c, "describe") },
+	"rev-parse": func(c engine.CaptureResult, _ invocation) ir.Report {
+		return parseOneValue(c, "rev-parse")
+	},
+	"blame":    func(c engine.CaptureResult, _ invocation) ir.Report { return parseBlame(c) },
+	"bisect":   func(c engine.CaptureResult, _ invocation) ir.Report { return parseBisect(c) },
+	"ls-files": func(c engine.CaptureResult, _ invocation) ir.Report { return parseLsFiles(c) },
+	"grep":     func(c engine.CaptureResult, _ invocation) ir.Report { return parseGrep(c) },
+	"rm":       func(c engine.CaptureResult, _ invocation) ir.Report { return parseRmMv(c, "rm") },
+	"mv":       func(c engine.CaptureResult, _ invocation) ir.Report { return parseRmMv(c, "mv") },
 }
 
 // parseInvocation splits git's global flags from the subcommand. Global flags
