@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,12 +11,38 @@ import (
 	"github.com/itssoumit/trimdown/internal/store"
 )
 
+// resetSavings erases the usage log after an explicit y/yes confirmation,
+// returning all savings totals to zero.
+func resetSavings() int {
+	fmt.Print("This erases all recorded savings and resets totals to 0. Continue? [y/N] ")
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	switch strings.TrimSpace(line) {
+	case "y", "Y", "yes", "YES", "Yes":
+	default:
+		fmt.Println("aborted — nothing was changed")
+		return 0
+	}
+	s, err := store.Open()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "trimdown savings:", err)
+		return 1
+	}
+	if err := s.Reset(); err != nil {
+		fmt.Fprintln(os.Stderr, "trimdown savings:", err)
+		return 1
+	}
+	fmt.Println("✓ savings reset to 0")
+	return 0
+}
+
 // Savings implements `trimdown savings [--json] [--all] [--since DUR] [-p]`.
 func Savings(args []string) int {
 	var o store.AggregateOpts
 	asJSON, all := false, false
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
+		case "--reset":
+			return resetSavings()
 		case "--json":
 			asJSON = true
 		case "--all", "-a":

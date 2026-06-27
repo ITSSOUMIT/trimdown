@@ -120,6 +120,15 @@ func (e *EventLog) Read() ([]Event, error) {
 	return out, sc.Err()
 }
 
+// Reset deletes the event log, returning all savings totals to zero. A fresh
+// log is created on the next recorded command.
+func (e *EventLog) Reset() error {
+	if err := os.Remove(e.path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 func logPath() string {
 	if d := os.Getenv("TRIMDOWN_DATA"); d != "" {
 		return filepath.Join(d, "events.ndjson")
