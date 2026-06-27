@@ -85,14 +85,16 @@ trimdown doctor                         # check integration status
 trimdown uninstall claude-code          # remove it
 ```
 
-This installs a **`PreToolUse` command-rewrite hook**: before the agent runs a
-Bash command, trimdown rewrites covered commands (e.g. `git status` →
-`trimdown git status`) and leaves everything else untouched. The rewrite is
-**context-aware and safe** — it never wraps a command inside `$(…)`, a pipe, a
-redirect, an assignment, or an interactive/streaming command (`git commit`
-without `-m`, `docker run -it`, `kubectl logs -f`, …). Kill switch:
-`TRIMDOWN_DISABLE=1`. See [docs/INTEGRATION.md](docs/INTEGRATION.md) for details
-and why hooks (not PATH shims or prompt rules) are the only mechanism supported.
+This installs two hooks: a **`PreToolUse` command-rewrite** on Bash (before the
+agent runs a command, trimdown rewrites covered ones — `git status` →
+`trimdown git status` — leaving everything else untouched), and a **`PostToolUse`
+output-compaction** on the native `Grep`/`Glob` tools (caps long results, which a
+PreToolUse-only integration can't reach). The rewrite is **context-aware and
+safe** — it never wraps a command inside `$(…)`, a pipe, a redirect, an
+assignment, or an interactive/streaming command (`git commit` without `-m`,
+`docker run -it`, `kubectl logs -f`, …). Kill switch: `TRIMDOWN_DISABLE=1`. See
+[docs/INTEGRATION.md](docs/INTEGRATION.md) for details and why hooks (not PATH
+shims or prompt rules) are the only mechanism supported.
 
 ## Savings analytics
 
