@@ -80,9 +80,8 @@ func Main(args []string) int {
 	if f, ok := registry.Lookup(o.Tool, o.Args); ok {
 		return run.Execute(f, o)
 	}
-	// Unknown tool/subcommand → run unfiltered, but measure how many tokens it
-	// produced so `savings` can flag it as an untapped opportunity.
-	return run.ExecuteRaw(o.Tool, o.Args)
+	// Unknown tool/subcommand → run unfiltered (and record as passthrough).
+	return meta.Passthrough(rest)
 }
 
 // parseGlobals consumes leading global flags and returns the remaining args

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -78,7 +77,6 @@ func Savings(args []string) int {
 		return 0
 	}
 	writeSavers(&b, sum)
-	writeOpportunities(&b, sum)
 	writeFailures(&b, sum)
 	if all {
 		writeBreakdown(&b, "Daily", "Date", daily)
@@ -103,8 +101,7 @@ func writeHeader(b *strings.Builder, s store.Summary, daily, weekly []store.Buck
 
 	// Coverage: of everything that ran through trimdown, how much we intercepted.
 	raw := s.Passthrough + s.ParseFail
-	fmt.Fprintf(b, "  Coverage    %d/%d commands filtered  %s  %.0f%%\n",
-		s.Filtered, s.Commands, bar(s.Coverage/100, 16), s.Coverage)
+	fmt.Fprintf(b, "  Coverage    %d/%d commands filtered\n", s.Filtered, s.Commands)
 	if raw > 0 {
 		fmt.Fprintf(b, "              %d ran raw", s.Passthrough)
 		if s.ParseFail > 0 {
@@ -113,16 +110,11 @@ func writeHeader(b *strings.Builder, s store.Summary, daily, weekly []store.Buck
 		fmt.Fprintln(b)
 	}
 
-	// Effectiveness: how hard we compressed what we did filter.
-	fmt.Fprintf(b, "  Compressed  %s → %s   saved %s  (%.0f%%)\n",
-		store.Humanize(s.TotalIn), store.Humanize(s.TotalOut), store.Humanize(s.TotalSaved), s.Pct)
-
-	// Value: tokens are abstract — dollars and context windows are not.
-	dollars := float64(s.TotalSaved) / 1_000_000 * pricePerMTok()
-	ctx := contextTokens()
-	windows := float64(s.TotalSaved) / float64(ctx)
-	fmt.Fprintf(b, "  Value       ≈ $%.2f saved (@$%g/M)  ·  %s a %s-token context\n",
-		dollars, pricePerMTok(), fmtWindows(windows), store.Humanize(ctx))
+	// Effectiveness: how hard we compressed what we did filter, with the
+	// savings rate broken out onto its own line.
+	fmt.Fprintf(b, "  Compressed  %s → %s   saved %s\n",
+		store.Humanize(s.TotalIn), store.Humanize(s.TotalOut), store.Humanize(s.TotalSaved))
+	fmt.Fprintf(b, "  Savings     %s  %s\n", bar(s.Pct/100, 16), colorize(fmt.Sprintf("%.0f%%", s.Pct), s.Pct))
 
 	// Direction: a sparkline of daily saved + week-over-week effectiveness delta.
 	if line := trendLine(daily, weekly); line != "" {
@@ -149,23 +141,11 @@ func writeSavers(b *strings.Builder, s store.Summary) {
 		if maxSaved > 0 {
 			frac = float64(c.Saved) / float64(maxSaved)
 		}
-		fmt.Fprintf(b, "  %3d  %-*s  %6d  %8s  %4.0f%%  %7s  %s\n",
+		rate := colorize(fmt.Sprintf("%4.0f%%", c.Pct), c.Pct)
+		fmt.Fprintf(b, "  %3d  %-*s  %6d  %8s  %s  %7s  %s\n",
 			i+1, cmdW, truncate(c.Command, cmdW), c.Count,
-			store.Humanize(c.Saved), c.Pct, store.HumanizeMS(c.AvgMS), bar(frac, 12))
+			store.Humanize(c.Saved), rate, store.HumanizeMS(c.AvgMS), bar(frac, 12))
 	}
-}
-
-func writeOpportunities(b *strings.Builder, s store.Summary) {
-	if len(s.Opportunities) == 0 {
-		return
-	}
-	cmdW := commandWidth(s.Opportunities, "Command")
-	fmt.Fprintf(b, "\nUntapped — ran raw, no filter yet (%s tokens total)\n", store.Humanize(s.OppTokens))
-	for _, c := range s.Opportunities {
-		fmt.Fprintf(b, "  %-*s  %6d×  %8s tokens\n",
-			cmdW, truncate(c.Command, cmdW), c.Count, store.Humanize(c.In))
-	}
-	fmt.Fprintln(b, "  → these are the best candidates for a new filter.")
 }
 
 func writeFailures(b *strings.Builder, s store.Summary) {
@@ -298,11 +278,29 @@ func bar(frac float64, width int) string {
 	return strings.Repeat("█", n) + strings.Repeat("░", width-n)
 }
 
-func fmtWindows(w float64) string {
-	if w >= 10 {
-		return fmt.Sprintf("%.0f×", w)
+// colorize wraps text in an ANSI color chosen by the percentage it represents:
+// green > 80, blue 40–80, red < 40. No-ops unless stdout is a terminal (and
+// NO_COLOR is unset), so piped/agent output stays clean.
+func colorize(text string, pct float64) string {
+	if !colorEnabled() {
+		return text
 	}
-	return fmt.Sprintf("%.1f×", w)
+	code := "31" // red
+	switch {
+	case pct > 80:
+		code = "32" // green
+	case pct >= 40:
+		code = "34" // blue
+	}
+	return "\x1b[" + code + "m" + text + "\x1b[0m"
+}
+
+func colorEnabled() bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	fi, err := os.Stdout.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
 func pctOf(saved, in int) float64 {
@@ -321,24 +319,4 @@ func truncate(s string, max int) string {
 		return "…"
 	}
 	return string(r[:max-1]) + "…"
-}
-
-// pricePerMTok is the assumed $/1M tokens for the value estimate (configurable).
-func pricePerMTok() float64 {
-	if v := os.Getenv("TRIMDOWN_PRICE_PER_MTOK"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
-			return f
-		}
-	}
-	return 3.0
-}
-
-// contextTokens is the assumed model context size for the "windows freed" view.
-func contextTokens() int {
-	if v := os.Getenv("TRIMDOWN_CONTEXT_TOKENS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return n
-		}
-	}
-	return 200_000
 }

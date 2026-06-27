@@ -99,15 +99,13 @@ and why hooks (not PATH shims or prompt rules) are the only mechanism supported.
 `trimdown savings` is built around what's actually actionable, not vanity totals:
 
 - **Coverage** — how many commands trimdown actually intercepted vs ran raw.
-- **Value** — tokens saved translated to **dollars** and **context windows freed**
-  (configurable via `TRIMDOWN_PRICE_PER_MTOK`, default `3.0`, and
-  `TRIMDOWN_CONTEXT_TOKENS`, default `200000`).
+- **Savings** — the token savings rate, broken out on its own line.
 - **Top savers** — where it earns its keep (per-command impact bars).
-- **Untapped** — commands that ran raw with no filter, ranked by token volume.
-  trimdown *measures* even what it can't yet compress (lossless tee), so this
-  tells you exactly which filter to build next.
 - **⚠ Parse failures** — filters that fell back to raw (a regression signal).
 - **Trend** — a sparkline of recent savings + week-over-week delta.
+
+Percentages are color-coded on a terminal (green > 80, blue 40–80, red < 40);
+color is suppressed when piped or when `NO_COLOR` is set.
 
 `--all` adds daily/weekly/monthly breakdowns; `--json` emits the full structure;
 `-p` scopes to the current project; `--since 24h` limits the window.

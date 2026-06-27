@@ -104,23 +104,3 @@ func firstNonFlag(args []string) string {
 func RecordPassthrough(tool string, args []string, dur time.Duration) {
 	recordEvent(store.NewEvent(tool, firstNonFlag(args), 0, 0, dur.Milliseconds(), store.ModePassthrough))
 }
-
-// ExecuteRaw runs an unfiltered command (an unknown tool / one with no filter)
-// and records how many tokens flowed through it. When stdout is a pipe (an
-// agent is capturing the output), it tees the output live while measuring the
-// token volume — so `savings` can surface the biggest commands we don't yet
-// filter as an opportunity. When stdout is a terminal it falls back to a pure
-// passthrough, so an unknown interactive tool (an editor, a REPL) is never
-// buffered.
-func ExecuteRaw(tool string, args []string) int {
-	start := time.Now()
-	if engine.IsStdoutTerminal() {
-		code := engine.Passthrough(tool, args)
-		RecordPassthrough(tool, args, time.Since(start))
-		return code
-	}
-	captured, code := engine.TeePassthrough(tool, args)
-	n := tokenizer.Default().Count(captured)
-	recordEvent(store.NewEvent(tool, firstNonFlag(args), n, n, time.Since(start).Milliseconds(), store.ModePassthrough))
-	return code
-}

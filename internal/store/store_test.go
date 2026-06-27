@@ -72,13 +72,13 @@ func TestAggregate(t *testing.T) {
 
 func TestAggregateClassifiesModes(t *testing.T) {
 	events := []Event{
-		NewEvent("git", "diff", 600, 100, 0, ModeFiltered),         // saver
-		NewEvent("cargo", "build", 5000, 5000, 0, ModePassthrough), // opportunity (measured raw)
-		NewEvent("go", "test", 800, 800, 0, ModeParseFail),         // failure
+		NewEvent("git", "diff", 600, 100, 0, ModeFiltered),   // saver
+		NewEvent("cargo", "build", 0, 0, 0, ModePassthrough), // ran raw
+		NewEvent("go", "test", 800, 800, 0, ModeParseFail),   // filter fell back
 	}
 	s := Aggregate(events, AggregateOpts{})
-	if s.OppTokens != 5000 || len(s.Opportunities) != 1 || s.Opportunities[0].Command != "cargo build" {
-		t.Fatalf("opportunity wrong: opp=%d %+v", s.OppTokens, s.Opportunities)
+	if s.Filtered != 1 || s.Passthrough != 1 || s.ParseFail != 1 {
+		t.Fatalf("mode counts wrong: %d/%d/%d", s.Filtered, s.Passthrough, s.ParseFail)
 	}
 	if s.FailTokens != 800 || len(s.Failures) != 1 || s.Failures[0].Command != "go test" {
 		t.Fatalf("failure wrong: fail=%d %+v", s.FailTokens, s.Failures)

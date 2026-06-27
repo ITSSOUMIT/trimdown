@@ -35,15 +35,13 @@ type Summary struct {
 	TotalSaved int     `json:"total_saved"`
 	Pct        float64 `json:"pct"` // TotalSaved/TotalIn (filter effectiveness)
 
-	OppTokens  int `json:"opportunity_tokens"` // tokens that ran raw (no filter)
-	FailTokens int `json:"failure_tokens"`     // tokens wasted on parse fallbacks
+	FailTokens int `json:"failure_tokens"` // tokens wasted on parse fallbacks
 
 	TotalMS int64 `json:"total_ms"`
 	AvgMS   int64 `json:"avg_ms"`
 
-	Savers        []CmdStat `json:"top_savers"`
-	Opportunities []CmdStat `json:"opportunities,omitempty"`
-	Failures      []CmdStat `json:"failures,omitempty"`
+	Savers   []CmdStat `json:"top_savers"`
+	Failures []CmdStat `json:"failures,omitempty"`
 
 	Since string `json:"since,omitempty"`
 	Scope string `json:"scope,omitempty"`
@@ -97,7 +95,6 @@ func Aggregate(events []Event, o AggregateOpts) Summary {
 
 	var s Summary
 	savers := map[string]*CmdStat{}
-	opps := map[string]*CmdStat{}
 	fails := map[string]*CmdStat{}
 
 	add := func(m map[string]*CmdStat, ev Event) {
@@ -133,8 +130,6 @@ func Aggregate(events []Event, o AggregateOpts) Summary {
 			add(fails, ev)
 		default: // ModePassthrough
 			s.Passthrough++
-			s.OppTokens += ev.In
-			add(opps, ev)
 		}
 	}
 
@@ -145,7 +140,6 @@ func Aggregate(events []Event, o AggregateOpts) Summary {
 	}
 
 	bySaved := func(a, b CmdStat) bool { return a.Saved > b.Saved }
-	byIn := func(a, b CmdStat) bool { return a.In > b.In }
 	byCount := func(a, b CmdStat) bool {
 		if a.Count != b.Count {
 			return a.Count > b.Count
@@ -153,7 +147,6 @@ func Aggregate(events []Event, o AggregateOpts) Summary {
 		return a.In > b.In
 	}
 	s.Savers = topStats(savers, topN, bySaved)
-	s.Opportunities = topStats(opps, 5, byIn)
 	s.Failures = topStats(fails, 5, byCount)
 
 	if o.Since > 0 {
