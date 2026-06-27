@@ -53,17 +53,58 @@ func TestAggregate(t *testing.T) {
 		NewEvent("echo", "", 0, 0, 0, ModePassthrough),      // not in avg
 	}
 	s := Aggregate(events, AggregateOpts{})
-	if s.Commands != 3 || s.Filtered != 2 {
-		t.Fatalf("commands=%d filtered=%d, want 3/2", s.Commands, s.Filtered)
+	if s.Commands != 3 || s.Filtered != 2 || s.Passthrough != 1 {
+		t.Fatalf("commands=%d filtered=%d passthrough=%d, want 3/2/1", s.Commands, s.Filtered, s.Passthrough)
 	}
 	if s.TotalSaved != 360+300 {
 		t.Fatalf("total saved = %d, want 660", s.TotalSaved)
 	}
-	if s.AvgPct != 70 { // (90+50)/2, passthrough excluded
-		t.Fatalf("avg pct = %v, want 70", s.AvgPct)
+	if s.Pct != 66 { // aggregate ratio 660/1000, not a mean of per-event pcts
+		t.Fatalf("pct = %v, want 66", s.Pct)
 	}
-	if len(s.TopTools) == 0 || s.TopTools[0].Tool != "git" {
-		t.Fatalf("expected git as top tool, got %+v", s.TopTools)
+	if s.Coverage < 66.6 || s.Coverage > 66.7 { // 2/3 filtered
+		t.Fatalf("coverage = %v, want ~66.7", s.Coverage)
+	}
+	if len(s.Savers) == 0 || s.Savers[0].Command != "git status" {
+		t.Fatalf("expected 'git status' as top saver, got %+v", s.Savers)
+	}
+}
+
+func TestAggregateClassifiesModes(t *testing.T) {
+	events := []Event{
+		NewEvent("git", "diff", 600, 100, 0, ModeFiltered),         // saver
+		NewEvent("cargo", "build", 5000, 5000, 0, ModePassthrough), // opportunity (measured raw)
+		NewEvent("go", "test", 800, 800, 0, ModeParseFail),         // failure
+	}
+	s := Aggregate(events, AggregateOpts{})
+	if s.OppTokens != 5000 || len(s.Opportunities) != 1 || s.Opportunities[0].Command != "cargo build" {
+		t.Fatalf("opportunity wrong: opp=%d %+v", s.OppTokens, s.Opportunities)
+	}
+	if s.FailTokens != 800 || len(s.Failures) != 1 || s.Failures[0].Command != "go test" {
+		t.Fatalf("failure wrong: fail=%d %+v", s.FailTokens, s.Failures)
+	}
+	// Passthrough/fail tokens must NOT inflate the effectiveness denominator.
+	if s.TotalIn != 600 {
+		t.Fatalf("TotalIn = %d, want 600 (filtered only)", s.TotalIn)
+	}
+}
+
+func TestAggregateBuckets(t *testing.T) {
+	events := []Event{
+		{TS: "2026-03-01T10:00:00Z", Tool: "git", In: 100, Out: 10, Saved: 90, MS: 50, Mode: ModeFiltered},
+		{TS: "2026-03-01T11:00:00Z", Tool: "go", In: 200, Out: 20, Saved: 180, MS: 100, Mode: ModeFiltered},
+		{TS: "2026-03-02T09:00:00Z", Tool: "git", In: 100, Out: 50, Saved: 50, MS: 30, Mode: ModeFiltered},
+	}
+	daily := AggregateBuckets(events, AggregateOpts{}, Daily)
+	if len(daily) != 2 {
+		t.Fatalf("daily buckets = %d, want 2", len(daily))
+	}
+	if daily[0].Label != "2026-03-01" || daily[0].Cmds != 2 || daily[0].Saved != 270 {
+		t.Fatalf("first daily bucket wrong: %+v", daily[0])
+	}
+	monthly := AggregateBuckets(events, AggregateOpts{}, Monthly)
+	if len(monthly) != 1 || monthly[0].Cmds != 3 || monthly[0].Label != "2026-03" {
+		t.Fatalf("monthly wrong: %+v", monthly)
 	}
 }
 

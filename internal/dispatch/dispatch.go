@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/itssoumit/trimdown/internal/integrate"
 	"github.com/itssoumit/trimdown/internal/meta"
 	"github.com/itssoumit/trimdown/internal/registry"
+	"github.com/itssoumit/trimdown/internal/rewrite"
 	"github.com/itssoumit/trimdown/internal/run"
 )
 
@@ -17,14 +19,22 @@ const usage = `trimdown — compress tool output to cut LLM token use
 Usage:
   trimdown [global flags] <tool> [args...]     run a tool with compacted output
   trimdown passthrough <cmd> [args...]         run unfiltered, but record usage
-  trimdown savings [--json]                    show token savings
-  trimdown version
+  trimdown savings [--all] [--json] [-p]       show token savings + analytics
+
+Agent integration:
+  trimdown install <agent> [--global]          wire trimdown into an agent (auto)
+  trimdown uninstall <agent> [--global]        remove it
+  trimdown agents                              list supported agents
+  trimdown doctor                              check integration status
 
 Global flags (before the tool):
   -v        increase verbosity (repeatable)
   -q        ultra-compact output
   --json    structured (JSON) output
-  --raw     skip filtering for this run`
+  --raw     skip filtering for this run
+
+Env:
+  TRIMDOWN_DISABLE=1   pass every command through unchanged (kill switch)`
 
 // Main is the entry point. Returns the process exit code.
 func Main(args []string) int {
@@ -44,16 +54,35 @@ func Main(args []string) int {
 		return meta.Passthrough(rest[1:])
 	case "savings":
 		return meta.Savings(rest[1:])
+	case "install":
+		return integrate.Install(rest[1:])
+	case "uninstall":
+		return integrate.Uninstall(rest[1:])
+	case "agents":
+		return integrate.ListAgents()
+	case "doctor":
+		return integrate.Doctor()
+	case "hook":
+		return integrate.Hook(rest[1:])
+	case "rewrite":
+		return integrate.RewriteCmd(rest[1:])
 	}
 
 	o.Tool = rest[0]
 	o.Args = rest[1:]
 
+	// Escape hatch + interactive guard: never capture a command that needs a
+	// TTY/editor; run it raw with inherited stdio (still recorded as passthrough).
+	if os.Getenv("TRIMDOWN_DISABLE") != "" || rewrite.IsInteractive(o.Tool, o.Args) {
+		return meta.Passthrough(rest)
+	}
+
 	if f, ok := registry.Lookup(o.Tool, o.Args); ok {
 		return run.Execute(f, o)
 	}
-	// Unknown tool/subcommand → run unfiltered (and record as passthrough).
-	return meta.Passthrough(rest)
+	// Unknown tool/subcommand → run unfiltered, but measure how many tokens it
+	// produced so `savings` can flag it as an untapped opportunity.
+	return run.ExecuteRaw(o.Tool, o.Args)
 }
 
 // parseGlobals consumes leading global flags and returns the remaining args

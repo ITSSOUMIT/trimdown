@@ -64,13 +64,53 @@ Native installers (`.dmg`/`.pkg`, `.deb`/`.rpm`, Scoop) ship on each release.
 ```
 trimdown <tool> [args...]      run a tool with compacted output
 trimdown passthrough <cmd>     run unfiltered, but record usage
-trimdown savings [--json]      show token savings
+trimdown savings [--all]       analytics (see below); --all adds time breakdowns
 trimdown version
 
 Global flags (before the tool):
   -v        verbose      --json   structured output
   -q        ultra-compact --raw   skip filtering for this run
 ```
+
+## Agent integration
+
+Run one command and your agent's shell commands compact automatically — no need
+to type `trimdown` yourself:
+
+```sh
+trimdown install claude-code            # project-local (./.claude/settings.local.json)
+trimdown install claude-code --global   # user-wide   (~/.claude/settings.json)
+trimdown agents                         # list supported agents
+trimdown doctor                         # check integration status
+trimdown uninstall claude-code          # remove it
+```
+
+This installs a **`PreToolUse` command-rewrite hook**: before the agent runs a
+Bash command, trimdown rewrites covered commands (e.g. `git status` →
+`trimdown git status`) and leaves everything else untouched. The rewrite is
+**context-aware and safe** — it never wraps a command inside `$(…)`, a pipe, a
+redirect, an assignment, or an interactive/streaming command (`git commit`
+without `-m`, `docker run -it`, `kubectl logs -f`, …). Kill switch:
+`TRIMDOWN_DISABLE=1`. See [docs/INTEGRATION.md](docs/INTEGRATION.md) for details
+and why hooks (not PATH shims or prompt rules) are the only mechanism supported.
+
+## Savings analytics
+
+`trimdown savings` is built around what's actually actionable, not vanity totals:
+
+- **Coverage** — how many commands trimdown actually intercepted vs ran raw.
+- **Value** — tokens saved translated to **dollars** and **context windows freed**
+  (configurable via `TRIMDOWN_PRICE_PER_MTOK`, default `3.0`, and
+  `TRIMDOWN_CONTEXT_TOKENS`, default `200000`).
+- **Top savers** — where it earns its keep (per-command impact bars).
+- **Untapped** — commands that ran raw with no filter, ranked by token volume.
+  trimdown *measures* even what it can't yet compress (lossless tee), so this
+  tells you exactly which filter to build next.
+- **⚠ Parse failures** — filters that fell back to raw (a regression signal).
+- **Trend** — a sparkline of recent savings + week-over-week delta.
+
+`--all` adds daily/weekly/monthly breakdowns; `--json` emits the full structure;
+`-p` scopes to the current project; `--since 24h` limits the window.
 
 ## Develop
 

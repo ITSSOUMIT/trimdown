@@ -4,6 +4,8 @@
 package registry
 
 import (
+	"sort"
+
 	"github.com/itssoumit/trimdown/internal/engine"
 	"github.com/itssoumit/trimdown/internal/ir"
 )
@@ -34,6 +36,18 @@ var filters = map[string][]Filter{}
 // Register adds a filter to the table. Call from init().
 func Register(f Filter) {
 	filters[f.Tool()] = append(filters[f.Tool()], f)
+}
+
+// RegisteredTools returns the sorted names of every tool that has at least one
+// registered filter. The command rewriter uses this to decide which first-word
+// of a shell command is worth wrapping with trimdown.
+func RegisteredTools() []string {
+	tools := make([]string, 0, len(filters))
+	for t := range filters {
+		tools = append(tools, t)
+	}
+	sort.Strings(tools)
+	return tools
 }
 
 // Lookup finds the best filter for a tool invocation: a subcommand-specific

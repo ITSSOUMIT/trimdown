@@ -29,7 +29,13 @@ func Execute(f registry.Filter, o registry.Opts) int {
 	out := render.Render(rep, render.Opts{JSON: o.JSON, Raw: o.Raw, Quiet: o.Quiet})
 	fmt.Println(out)
 
-	record(f, o, cr, out, mode, time.Since(start))
+	// Prefer the parser's identified subcommand (e.g. git "diff") for clean
+	// per-command analytics; fall back to the first positional arg.
+	sub := rep.Subcommand
+	if sub == "" {
+		sub = firstNonFlag(o.Args)
+	}
+	record(f, o, cr, out, mode, time.Since(start), sub)
 	return cr.ExitCode
 }
 
@@ -54,11 +60,11 @@ func safeParse(f registry.Filter, cr engine.CaptureResult, o registry.Opts) (rep
 	return rep, mode
 }
 
-func record(f registry.Filter, o registry.Opts, cr engine.CaptureResult, out string, mode store.Mode, dur time.Duration) {
+func record(f registry.Filter, o registry.Opts, cr engine.CaptureResult, out string, mode store.Mode, dur time.Duration, sub string) {
 	tok := tokenizer.Default()
 	in := tok.Count(rawOf(cr))
 	outTok := tok.Count(out)
-	ev := store.NewEvent(f.Tool(), firstNonFlag(o.Args), in, outTok, dur.Milliseconds(), mode)
+	ev := store.NewEvent(f.Tool(), sub, in, outTok, dur.Milliseconds(), mode)
 	recordEvent(ev)
 }
 
@@ -97,4 +103,24 @@ func firstNonFlag(args []string) string {
 // RecordPassthrough logs a passthrough command (0% savings) without filtering.
 func RecordPassthrough(tool string, args []string, dur time.Duration) {
 	recordEvent(store.NewEvent(tool, firstNonFlag(args), 0, 0, dur.Milliseconds(), store.ModePassthrough))
+}
+
+// ExecuteRaw runs an unfiltered command (an unknown tool / one with no filter)
+// and records how many tokens flowed through it. When stdout is a pipe (an
+// agent is capturing the output), it tees the output live while measuring the
+// token volume — so `savings` can surface the biggest commands we don't yet
+// filter as an opportunity. When stdout is a terminal it falls back to a pure
+// passthrough, so an unknown interactive tool (an editor, a REPL) is never
+// buffered.
+func ExecuteRaw(tool string, args []string) int {
+	start := time.Now()
+	if engine.IsStdoutTerminal() {
+		code := engine.Passthrough(tool, args)
+		RecordPassthrough(tool, args, time.Since(start))
+		return code
+	}
+	captured, code := engine.TeePassthrough(tool, args)
+	n := tokenizer.Default().Count(captured)
+	recordEvent(store.NewEvent(tool, firstNonFlag(args), n, n, time.Since(start).Milliseconds(), store.ModePassthrough))
+	return code
 }
