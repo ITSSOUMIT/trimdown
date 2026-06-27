@@ -73,7 +73,7 @@ func Savings(args []string) int {
 	var b strings.Builder
 	writeHeader(&b, sum, daily, weekly)
 	if sum.Commands == 0 {
-		fmt.Print(b.String())
+		emit(&b)
 		return 0
 	}
 	writeSavers(&b, sum)
@@ -83,7 +83,7 @@ func Savings(args []string) int {
 		writeBreakdown(&b, "Weekly", "Week", weekly)
 		writeBreakdown(&b, "Monthly", "Month", store.AggregateBuckets(events, o, store.Monthly))
 	}
-	fmt.Print(b.String())
+	emit(&b)
 	return 0
 }
 
@@ -278,21 +278,39 @@ func bar(frac float64, width int) string {
 	return strings.Repeat("█", n) + strings.Repeat("░", width-n)
 }
 
-// colorize wraps text in an ANSI color chosen by the percentage it represents:
-// green > 80, blue 40–80, red < 40. No-ops unless stdout is a terminal (and
-// NO_COLOR is unset), so piped/agent output stays clean.
+// baseWhite (#FFFFF5) is the foreground for all non-accent text; ansiReset
+// clears it at the very end of the output.
+const (
+	baseWhite = "\x1b[38;2;255;255;245m"
+	ansiReset = "\x1b[0m"
+)
+
+// colorize wraps text in a 24-bit truecolor chosen by the percentage it
+// represents: green (#5FAD56) > 80, blue (#1CA9C9) 40–80, red (#FB1616) < 40,
+// then returns to baseWhite. No-ops unless stdout is a terminal (and NO_COLOR
+// is unset), so piped/agent output stays clean.
 func colorize(text string, pct float64) string {
 	if !colorEnabled() {
 		return text
 	}
-	code := "31" // red
+	rgb := "251;22;22" // red #FB1616
 	switch {
 	case pct > 80:
-		code = "32" // green
+		rgb = "95;173;86" // green #5FAD56
 	case pct >= 40:
-		code = "34" // blue
+		rgb = "28;169;201" // blue #1CA9C9
 	}
-	return "\x1b[" + code + "m" + text + "\x1b[0m"
+	return "\x1b[38;2;" + rgb + "m" + text + baseWhite
+}
+
+// emit prints the built report, wrapping it in the off-white base color when
+// color is enabled so every non-accent character renders as #FFFFF5.
+func emit(b *strings.Builder) {
+	out := b.String()
+	if colorEnabled() {
+		out = baseWhite + out + ansiReset
+	}
+	fmt.Print(out)
 }
 
 func colorEnabled() bool {
