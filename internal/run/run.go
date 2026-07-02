@@ -27,6 +27,19 @@ func Execute(f registry.Filter, o registry.Opts) int {
 	rep.ExitCode = cr.ExitCode // always preserve the underlying tool's code
 
 	out := render.Render(rep, render.Opts{JSON: o.JSON, Raw: o.Raw, Quiet: o.Quiet})
+
+	raw := rawOf(cr)
+	tok := tokenizer.Default()
+	inTok := tok.Count(raw)
+	outTok := tok.Count(out)
+
+	// Never inflate: in text mode, if compaction didn't actually shrink the
+	// output (common for tiny outputs, where the summary line + icons cost a few
+	// tokens), show the raw output instead. trimdown must never cost tokens.
+	if rep.Filtered && !o.JSON && !o.Raw && raw != "" && outTok >= inTok {
+		out = raw
+		outTok = inTok
+	}
 	fmt.Println(out)
 
 	// Prefer the parser's identified subcommand (e.g. git "diff") for clean
@@ -35,7 +48,7 @@ func Execute(f registry.Filter, o registry.Opts) int {
 	if sub == "" {
 		sub = firstNonFlag(o.Args)
 	}
-	record(f, o, cr, out, mode, time.Since(start), sub)
+	recordEvent(store.NewEvent(f.Tool(), sub, inTok, outTok, time.Since(start).Milliseconds(), mode))
 	return cr.ExitCode
 }
 
@@ -58,14 +71,6 @@ func safeParse(f registry.Filter, cr engine.CaptureResult, o registry.Opts) (rep
 		mode = store.ModePassthrough
 	}
 	return rep, mode
-}
-
-func record(f registry.Filter, o registry.Opts, cr engine.CaptureResult, out string, mode store.Mode, dur time.Duration, sub string) {
-	tok := tokenizer.Default()
-	in := tok.Count(rawOf(cr))
-	outTok := tok.Count(out)
-	ev := store.NewEvent(f.Tool(), sub, in, outTok, dur.Milliseconds(), mode)
-	recordEvent(ev)
 }
 
 // rawOf is the unfiltered output the agent would otherwise have seen.
